@@ -105,7 +105,7 @@ organisation (client Ockham CRM, ex. Elise Lyon)
 
 Toutes les tables portent `organisation_id`.
 
-**Rôles** : `superadmin` (Ockham), `admin`, `manager`, `commercial`. Un commercial voit son portefeuille ; un manager voit son équipe ; un admin voit toute son organisation. Les rôles de Lettrage servent de modèle.
+**Rôles** : `superadmin` (Ockham), `admin`, `manager`, `commercial`. **Tout le monde voit 100 % du portefeuille et des prospects de son organisation** (décidé le 03/10/2026). Chaque liste propose les filtres « Mon portefeuille » et « Mes leads ». Les rôles servent aux droits d'écriture : réglages, équipe, suppressions. Les rôles de Lettrage servent de modèle.
 
 ## 6. Intégrations
 
@@ -205,6 +205,6 @@ Pilote avec 2 ou 3 commerciaux dès la V1.
 ## 11. Questions ouvertes
 1. Signification des valeurs 1 à 4 des champs personnalisés « Zone » et « Catégorisation ».
 2. Fichier des codes postaux par commercial.
-3. Les commerciaux voient-ils le CA des autres ?
+3. ~~Visibilité~~ : 100 % du portefeuille pour tous, avec les filtres « Mon portefeuille » et « Mes leads ».
 4. Dépôt GitHub à créer (`ockham-crm`, privé).
 5. Nom de domaine de l'application (ex. `crm.ockham-finance.com`).
