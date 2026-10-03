@@ -73,9 +73,16 @@ de connexion, visible seulement en local) pour voir les écrans sans base.
   `USING (organisation_id = get_my_organisation_id()) WITH CHECK (même chose)`.
   Jamais `USING (auth.uid() IS NOT NULL)` : c'est la faille corrigée dans Lettrage
   (migration 162).
-- **Toute évolution passe par un fichier dans `supabase/migrations/`**, appliqué par
-  la CLI. Rien à la main dans l'éditeur SQL : c'est ce qui a créé la dérive de schéma
-  de Lettrage.
+- **Toute évolution passe par un fichier dans `supabase/migrations/`, appliqué par
+  Claude via la CLI** (`npx supabase db push --linked`, après `--dry-run`), après
+  accord écrit sur le fichier (décidé le 2026-10-03). Rien à la main dans l'éditeur
+  SQL : c'est ce qui a créé la dérive de schéma de Lettrage. Si ça arrive quand même :
+  `npx supabase migration repair --status applied <version> --linked`.
+- **Test d'isolation** à rejouer après chaque migration :
+  `npx supabase db query --linked -f supabase/tests/test_isolation_organisations.sql`
+  (transaction annulée, chaque ligne doit afficher ok = true). Puis
+  `npx supabase db advisors --linked` : seuls les 3 avertissements sur
+  `get_my_organisation_id`, `get_my_role`, `is_superadmin` sont attendus.
 - Sécurité vérifiée **par le test** (compte d'une organisation vide qui tente de lire
   une autre organisation, on compte les lignes), jamais par la seule lecture du SQL.
 
@@ -89,7 +96,16 @@ de connexion, visible seulement en local) pour voir les écrans sans base.
 
 ## État au 2026-10-03
 
-Fait : audit de l'export Axonaut (`scripts/audit-axonaut-export.js`), CDC v0.2,
-squelette de l'application (connexion, barre latérale, pages vides), local seulement.
-Ouvert : dépôt GitHub, `supabase link` à refaire dans ce dossier (il a été lancé
-depuis le dossier utilisateur), schéma V1.
+Fait :
+- CDC v0.2, squelette de l'application en ligne sur `ockham-crm.vercel.app`
+  (projet Vercel `ockham-crm`, dépôt `cdesmares-cmyk/ockham-crm`).
+- Base : migrations 001 (socle V1 + RLS) et 002 appliquées, registre à jour,
+  test d'isolation 16/16. Base vide de données.
+- Script d'import CSV Axonaut (`scripts/import-axonaut-csv.js`) : aperçu seul pour
+  l'instant ; le SQL qu'il génère va dans `data/` (jamais commité).
+
+Décidé : tout le monde voit 100 % du portefeuille, avec filtres « Mon portefeuille »
+et « Mes leads ».
+
+Ouvert : signification des fiches « Facturé à » (payeur pur ou aussi site
+collecté ?), import réel, comptes utilisateurs, connexion Google, clé API Axonaut.
