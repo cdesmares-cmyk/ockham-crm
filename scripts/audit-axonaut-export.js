@@ -3,7 +3,7 @@ let t=fs.readFileSync(process.argv[2],'utf8').replace(/^﻿/,'');
 const rows=[];let r=[],f='',q=false;
 for(let i=0;i<t.length;i++){const c=t[i];
  if(q){if(c=='"'){if(t[i+1]=='"'){f+='"';i++}else q=false}else f+=c}
- else if(c=='"')q=true; else if(c==';'){r.push(f);f=''} else if(c=='\n'){r.push(f.replace(/\r$/,''));rows.push(r);r=[];f=''} else f+=c}
+ else if(c=='"'&&f==='')q=true; else if(c==';'){r.push(f);f=''} else if(c=='\n'){r.push(f.replace(/\r$/,''));rows.push(r);r=[];f=''} else f+=c}
 if(f||r.length){r.push(f);rows.push(r)}
 const H=rows.shift();const D=rows.filter(x=>x.length>1).map(x=>{const o={};H.forEach((h,i)=>{if(!(h in o))o[h]=(x[i]||'').trim()});return o});
 console.log('cols',H.length,'rows',D.length,'bad width',rows.filter(x=>x.length!=H.length&&x.length>1).length);

@@ -78,6 +78,9 @@ de connexion, visible seulement en local) pour voir les écrans sans base.
   accord écrit sur le fichier (décidé le 2026-10-03). Rien à la main dans l'éditeur
   SQL : c'est ce qui a créé la dérive de schéma de Lettrage. Si ça arrive quand même :
   `npx supabase migration repair --status applied <version> --linked`.
+- **Piège `npx supabase db query`** : un script entouré de `begin; … commit;` n'est
+  pas enregistré (constaté le 2026-10-04). Pour écrire des données, lancer des
+  instructions séparées, ou passer par un fichier de migration.
 - **Test d'isolation** à rejouer après chaque migration :
   `npx supabase db query --linked -f supabase/tests/test_isolation_organisations.sql`
   (transaction annulée, chaque ligne doit afficher ok = true). Puis
@@ -99,8 +102,10 @@ de connexion, visible seulement en local) pour voir les écrans sans base.
 Fait :
 - CDC v0.2, squelette de l'application en ligne sur `ockham-crm.vercel.app`
   (projet Vercel `ockham-crm`, dépôt `cdesmares-cmyk/ockham-crm`).
-- Base : migrations 001 (socle V1 + RLS) et 002 appliquées, registre à jour,
-  test d'isolation 16/16. Base vide de données.
+- Base : migrations 001 (socle V1 + RLS), 002 et 003 (classement des fiches)
+  appliquées, registre à jour, test d'isolation 16/16.
+- Organisation Elise Lyon (`ELISE-LYON`) créée, Clément admin
+  (compte email + mot de passe, inscriptions libres désactivées).
 - Script d'import CSV Axonaut (`scripts/import-axonaut-csv.js`) : aperçu seul pour
   l'instant ; le SQL qu'il génère va dans `data/` (jamais commité).
 
