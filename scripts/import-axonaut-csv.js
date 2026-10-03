@@ -6,7 +6,7 @@
 //
 // Usage :
 //   node scripts/import-axonaut-csv.js <clients.csv> <contacts.csv>                 → aperçu, rien n'est écrit
-//   node scripts/import-axonaut-csv.js <clients.csv> <contacts.csv> --sql data/x.sql → génère le SQL d'import
+//   node scripts/import-axonaut-csv.js <clients.csv> <contacts.csv> --sql data/import → génère les fichiers SQL d'import
 //
 // Le SQL est idempotent (clé : organisation + id Axonaut) et ne touche jamais un
 // classement ou un rattachement déjà validé par un commercial.
@@ -352,71 +352,91 @@ const q = v => v == null ? 'null' : `'${String(v).replace(/'/g, "''")}'`
 const qj = v => `${q(JSON.stringify(v))}::jsonb`
 const b = v => v == null ? 'null' : String(v)
 
+/** Découpe une liste en paquets, pour garder des instructions de taille raisonnable. */
+const paquets = (liste, taille) => Array.from({ length: Math.ceil(liste.length / taille) }, (_, i) => liste.slice(i * taille, (i + 1) * taille))
+
+/** Renvoie une liste d'instructions SQL, chacune exécutable seule et rejouable
+ *  sans doublon (upserts). Pas de begin/commit : `supabase db query` ne les
+ *  enregistre pas (voir CLAUDE.md). En cas de coupure, on relance tout. */
 function genererSql({ tiers, contacts, entreprises, rattachements }) {
   const org = `(select id from public.organisations where code_org = ${q(ORGANISATION.code_org)})`
-  const out = []
-  out.push('-- Import Axonaut (CSV) généré par scripts/import-axonaut-csv.js. Données réelles : ne pas commiter.')
-  out.push('begin;')
-  out.push(`insert into public.organisations (nom, code_org) values (${q(ORGANISATION.nom)}, ${q(ORGANISATION.code_org)}) on conflict (code_org) do nothing;`)
-  out.push(`insert into public.sync_runs (organisation_id, source, lignes_lues) values (${org}, 'import_csv', ${tiers.length});`)
+  const sql = []
 
-  out.push('insert into public.entreprises (organisation_id, siren) values')
-  out.push(entreprises.map(e => `  (${org}, ${q(e.siren)})`).join(',\n'))
-  out.push('on conflict (organisation_id, siren) do nothing;')
+  sql.push(`insert into public.organisations (nom, code_org) values (${q(ORGANISATION.nom)}, ${q(ORGANISATION.code_org)}) on conflict (code_org) do nothing;`)
+  sql.push(`insert into public.sync_runs (organisation_id, source, lignes_lues) values (${org}, 'import_csv', ${tiers.length});`)
+
+  for (const lot of paquets(entreprises, 1000)) {
+    sql.push(`insert into public.entreprises (organisation_id, siren)
+select ${org}, v.siren from (values
+${lot.map(e => `  (${q(e.siren)})`).join(',\n')}
+) as v(siren)
+on conflict (organisation_id, siren) do nothing;`)
+  }
 
   const cols = ['axonaut_id', 'statut_axonaut', 'classement', 'classement_statut', 'chantier', 'siret', 'siret_statut',
     'nom', 'adresse', 'code_postal', 'ville', 'pays', 'commercial_axonaut', 'actif', 'champs_axonaut', 'consignes',
     'ca_total', 'ca_annee', 'premiere_facture', 'derniere_facture']
-  out.push(`insert into public.tiers (organisation_id, ${cols.join(', ')}, synchro_le) values`)
-  out.push(tiers.map(t => '  (' + [org, t.axonaut_id, q(t.statut_axonaut), q(t.classement), q(t.classement_statut), b(t.chantier),
-    q(t.siret), q(t.siret_statut), q(t.nom), q(t.adresse), q(t.code_postal), q(t.ville), q(t.pays),
-    q(t.commercial_axonaut), b(t.actif), qj(t.champs_axonaut), q(t.consignes), t.ca_total, t.ca_annee,
-    q(t.premiere_facture), q(t.derniere_facture), 'now()'].join(', ') + ')').join(',\n'))
   const proteges = new Set(['classement', 'classement_statut', 'chantier'])
-  out.push('on conflict (organisation_id, axonaut_id) do update set')
-  out.push([
+  const miseAJour = [
     ...cols.filter(c => c !== 'axonaut_id' && !proteges.has(c)).map(c => `  ${c} = excluded.${c}`),
     // Un classement validé par un commercial n'est jamais écrasé.
     ...[...proteges].map(c => `  ${c} = case when public.tiers.classement_statut = 'valide' then public.tiers.${c} else excluded.${c} end`),
     '  synchro_le = excluded.synchro_le',
-  ].join(',\n') + ';')
+  ].join(',\n')
+  for (const lot of paquets(tiers, 400)) {
+    sql.push(`insert into public.tiers (organisation_id, ${cols.join(', ')}, synchro_le)
+select ${org}, v.*, now() from (values
+${lot.map(t => '  (' + [t.axonaut_id + '::bigint', q(t.statut_axonaut), q(t.classement), q(t.classement_statut), b(t.chantier) + '::boolean',
+    q(t.siret), q(t.siret_statut), q(t.nom), q(t.adresse), q(t.code_postal), q(t.ville), q(t.pays),
+    q(t.commercial_axonaut), b(t.actif) + '::boolean', qj(t.champs_axonaut), q(t.consignes), t.ca_total + '::numeric', t.ca_annee + '::numeric',
+    q(t.premiere_facture) + '::date', q(t.derniere_facture) + '::date'].join(', ') + ')').join(',\n')}
+) as v(${cols.join(', ')})
+on conflict (organisation_id, axonaut_id) do update set
+${miseAJour};`)
+  }
 
-  out.push(`update public.tiers t set entreprise_id = e.id
+  sql.push(`update public.tiers t set entreprise_id = e.id
 from public.entreprises e
 where t.organisation_id = ${org} and e.organisation_id = t.organisation_id
   and e.siren = left(t.siret, 9) and t.entreprise_id is distinct from e.id;`)
 
-  const avecId = contacts.filter(c => c.axonaut_id)
-  out.push('insert into public.contacts (organisation_id, tiers_id, axonaut_id, civilite, prenom, nom, fonction, email, telephone, mobile, consentement_suivi)')
-  out.push(`select ${org}, t.id, c.axonaut_id, c.civilite, c.prenom, c.nom, c.fonction, c.email, c.telephone, c.mobile, c.consentement_suivi from (values`)
-  out.push(avecId.map(c => `  (${c.tiers_axonaut_id}, ${c.axonaut_id}::bigint, ${q(c.civilite)}, ${q(c.prenom)}, ${q(c.nom)}, ${q(c.fonction)}, ${q(c.email)}, ${q(c.telephone)}, ${q(c.mobile)}, ${b(c.consentement_suivi)}::boolean)`).join(',\n'))
-  out.push(`) as c(tiers_axonaut_id, axonaut_id, civilite, prenom, nom, fonction, email, telephone, mobile, consentement_suivi)
+  // Rattachement des fiches au compte utilisateur du commercial, s'il existe déjà.
+  sql.push(`update public.tiers t set commercial_id = u.id
+from public.utilisateurs u
+where t.organisation_id = ${org} and u.organisation_id = t.organisation_id
+  and lower(u.email_axonaut) = t.commercial_axonaut and t.commercial_id is distinct from u.id;`)
+
+  for (const lot of paquets(contacts.filter(c => c.axonaut_id), 800)) {
+    sql.push(`insert into public.contacts (organisation_id, tiers_id, axonaut_id, civilite, prenom, nom, fonction, email, telephone, mobile, consentement_suivi)
+select ${org}, t.id, c.axonaut_id, c.civilite, c.prenom, c.nom, c.fonction, c.email, c.telephone, c.mobile, c.consentement_suivi from (values
+${lot.map(c => `  (${c.tiers_axonaut_id}, ${c.axonaut_id}::bigint, ${q(c.civilite)}, ${q(c.prenom)}, ${q(c.nom)}, ${q(c.fonction)}, ${q(c.email)}, ${q(c.telephone)}, ${q(c.mobile)}, ${b(c.consentement_suivi)}::boolean)`).join(',\n')}
+) as c(tiers_axonaut_id, axonaut_id, civilite, prenom, nom, fonction, email, telephone, mobile, consentement_suivi)
 join public.tiers t on t.organisation_id = ${org} and t.axonaut_id = c.tiers_axonaut_id
 on conflict (organisation_id, axonaut_id) where axonaut_id is not null do update set
   tiers_id = excluded.tiers_id, civilite = excluded.civilite, prenom = excluded.prenom, nom = excluded.nom,
   fonction = excluded.fonction, email = excluded.email, telephone = excluded.telephone, mobile = excluded.mobile,
   consentement_suivi = excluded.consentement_suivi;`)
+  }
 
-  if (rattachements.length) {
-    out.push(`update public.tiers s set payeur_id = p.id, rattachement_statut = 'suggere'
+  for (const lot of paquets(rattachements, 1000)) {
+    sql.push(`update public.tiers s set payeur_id = p.id, rattachement_statut = 'suggere'
 from (values
-${rattachements.map(r => `  (${r.site}, ${r.payeur})`).join(',\n')}
+${lot.map(r => `  (${r.site}, ${r.payeur})`).join(',\n')}
 ) as v(site, payeur)
 join public.tiers p on p.organisation_id = ${org} and p.axonaut_id = v.payeur
 where s.organisation_id = ${org} and s.axonaut_id = v.site and s.rattachement_statut is null;`)
   }
 
-  out.push(`update public.sync_runs set fin = now(), statut = 'ok', lignes_ecrites = ${tiers.length}
+  sql.push(`update public.sync_runs set fin = now(), statut = 'ok', lignes_ecrites = ${tiers.length}
 where id = (select id from public.sync_runs where organisation_id = ${org} and statut = 'en_cours' order by debut desc limit 1);`)
-  out.push('commit;')
-  return out.join('\n') + '\n'
+  return sql
 }
 
 // ---------------------------------------------------------------------------
 const args = process.argv.slice(2)
 const [fichierClients, fichierContacts] = args
 if (!fichierClients || !fichierContacts) {
-  console.error('Usage : node scripts/import-axonaut-csv.js <clients.csv> <contacts.csv> [--sql data/<sortie>.sql]')
+  console.error('Usage : node scripts/import-axonaut-csv.js <clients.csv> <contacts.csv> [--sql data/<dossier>]')
   process.exit(1)
 }
 const resultat = transformer(lireCsv(fichierClients), lireCsv(fichierContacts))
@@ -425,6 +445,9 @@ const iSql = args.indexOf('--sql')
 if (iSql !== -1) {
   const sortie = args[iSql + 1]
   if (!sortie?.startsWith('data/')) { console.error('\nLe SQL contient des données réelles : il doit être écrit dans data/.'); process.exit(1) }
-  fs.writeFileSync(sortie, genererSql(resultat))
-  console.log(`\nSQL écrit dans ${sortie}`)
+  fs.rmSync(sortie, { recursive: true, force: true })
+  fs.mkdirSync(sortie, { recursive: true })
+  const instructions = genererSql(resultat)
+  instructions.forEach((texte, i) => fs.writeFileSync(`${sortie}/${String(i + 1).padStart(2, '0')}.sql`, texte + '\n'))
+  console.log(`\n${instructions.length} fichiers SQL écrits dans ${sortie}/, à lancer dans l'ordre.`)
 }
