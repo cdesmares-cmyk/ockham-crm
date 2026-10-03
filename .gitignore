@@ -1,0 +1,24 @@
+# Variables d'environnement — NE JAMAIS COMMITTER
+.env
+.env.local
+*.local
+
+# Données clients — jamais dans Git
+data/
+*.csv
+*.xlsx
+
+node_modules
+dist
+dist-ssr
+*.log
+
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+
+.vercel
+
+# Cache local de la CLI Supabase
+supabase/.temp/
