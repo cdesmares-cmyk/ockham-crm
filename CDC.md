@@ -236,7 +236,7 @@ Pilote avec 2 ou 3 commerciaux dès la V1.
 **Ce que je propose d'ajouter (challenge) :**
 
 1. **Le code Elise Pro comme clé de rattachement.** L'analyse du Google Sheet (voir `docs/ANALYSE_SUIVI_COMMERCIAL.md`) montre que le code Elise Pro (N° Client / Code EP) se retrouve dans le champ « N° Client » d'Axonaut (95 à 100 % de correspondance). Saisi dans l'opportunité à la mise en place, il permet de **retrouver tout seul** le client quand il arrive par la synchro. Le **SIRET**, choisi dans la base publique des entreprises à la création du prospect, sert de clé de secours et à l'enrichissement (NAF, effectif).
-2. **Séparer le prospect et l'opportunité.** Le prospect, c'est l'entreprise ; l'opportunité, c'est une affaire. Une même entreprise peut avoir une affaire perdue en 2025 et une gagnée en 2026, et **un client existant peut avoir une opportunité** (nouveau site, nouveau flux). Le pipeline sert donc aussi au développement des clients.
+2. ~~Une seule fiche par entreprise~~ — **décidé le 04/10/2026 : la fiche prospect reste distincte de la fiche client.** Elle vit dans le pipeline. Quand le client arrive d'Axonaut, on **rattache (ou non) la fiche prospect à la fiche client** : elle est alors archivée, consultable depuis le compte client (onglet « Historique de prospection »). Voir 12.5.
 3. **Une étape « Signé, en attente de création »** entre la signature et l'apparition dans Axonaut. Elle se ferme d'elle-même quand le client est retrouvé. On mesure au passage le délai signature → première facture, et on repère les signatures oubliées dans Elise Pro.
 4. **Une fiche de passation** à la signature : tout ce qu'il faut saisir dans Elise Pro (SIRET, adresses, contacts, flux, montant), prêt à copier. Moins de ressaisie, moins d'erreurs.
 5. **« Perdu » ne veut pas dire « fini »** : motif de perte (prix, concurrent, pas de besoin, sans réponse) et date de relance proposée (6 ou 12 mois). Un prospect perdu est un prospect futur, et les motifs nourrissent les statistiques.
@@ -247,9 +247,7 @@ Pilote avec 2 ou 3 commerciaux dès la V1.
 
 | Table | Contenu |
 |---|---|
-| `opportunites` | entreprise / fiche prospect, client existant éventuel, commercial, source, étape, probabilité, montant mensuel, date de signature prévue, statut (`en_cours`, `signe_attente`, `gagne`, `perdu`), motif de perte, date de relance, **client final rattaché** (+ statut suggéré / validé) |
-| `activites` | journal commun aux comptes et aux opportunités : RDV, appel, email, commentaire, changement d'étape |
-| `rendez_vous` | date, lieu, participants, compte rendu, lien Google Agenda |
+Remplacé par le modèle de la section 12.5.
 
 ### 12.2 Boucle client : suivre l'évolution du CA
 
@@ -278,6 +276,52 @@ Chaque mois, l'outil calcule le **CA récurrent** et le pont d'un mois sur l'aut
 ### 12.3 Carte
 
 Une carte unique avec des calques activables : **clients, points de collecte, prospects, opportunités en cours**. Couleur par commercial, type ou CA. Objectif : voir les zones peu couvertes et prospecter autour des tournées existantes. Préalable : géocodage des adresses (API Adresse).
+
+### 12.5 Fiche prospect et champs personnalisés (décidé le 04/10/2026)
+
+**Principe.** Le pipeline se construit **de A à Z dans Ockham CRM**, sans rien coder en dur : les champs de qualification de la fiche prospect se créent, se modifient et se réordonnent depuis les **paramètres du pipeline**. Ils reprennent les champs personnalisés utilisés dans Elise Pro et Axonaut, pour que l'information circule avec les mêmes noms et les mêmes valeurs.
+
+**Une fiche prospect = un socle fixe + des champs personnalisés.**
+
+| Socle fixe (le moteur du pipeline) | Champs personnalisés (la qualification, réglable) |
+|---|---|
+| Nom de l'entreprise, SIRET (recherche dans la base publique), adresse | Origine du lead, type de contrat (Local / National / Cadre / AO), secteur, effectif, zone, mode de collecte, privé / public |
+| Commercial en charge | Chaleur, pourquoi Elise, décideur, visite sur site |
+| Étape du pipeline, statut (en cours / gagné / perdu / archivé) | CITEO, Marguerite, sous-traitance |
+| Montant récurrent mensuel, budget initial, probabilité | … et tout ce que les équipes ajouteront |
+| Dates : création, relance, signature, mise en place | |
+| Contacts, activités (RDV, appels, commentaires) | |
+| Code Elise Pro, client rattaché | |
+
+Le socle reste fixe parce que le tableau de bord en dépend (montants, étapes, dates). Tout le reste est réglable.
+
+**Types de champs :** texte court, texte long, nombre, montant (€), date, liste déroulante (un choix), choix multiple, case à cocher, téléphone, email.
+
+**Réglages d'un champ :** libellé, type, valeurs de la liste (ajout, renommage, ordre, désactivation), obligatoire ou non, section de la fiche, ordre d'affichage, aide à la saisie, **nom du champ correspondant dans Elise Pro et Axonaut**.
+
+**Garde-fous (challenge) :**
+1. **Un champ ou une valeur ne se supprime pas, il se désactive.** Il disparaît des nouvelles saisies, mais les fiches anciennes gardent leur valeur et les statistiques restent justes.
+2. **Les valeurs sont enregistrées par identifiant, pas par libellé.** Renommer « Local » en « Contrat local » ne casse ni les fiches ni les filtres.
+3. **Qui modifie quoi.** Admin et manager créent et modifient les champs. Pour les commerciaux, une option par liste : « les commerciaux peuvent ajouter une valeur ». Sans ce garde-fou, on retrouve les listes divergentes du Google Sheet.
+4. **La fiche de passation** à la signature affiche chaque champ avec son nom Elise Pro / Axonaut, prêt à recopier, tant qu'Elise Pro n'est pas connecté.
+5. **Les étapes du pipeline sont aussi réglables** : nom, ordre, couleur, probabilité par défaut, et type (en cours, gagné, perdu). Départ avec les étapes actuelles du Sheet.
+
+**Rattachement prospect → client.**
+- La fiche prospect gagnée attend son client. Quand il arrive par la synchro Axonaut, l'outil le propose (code Elise Pro, puis SIRET, puis nom).
+- Sur la **fiche client**, une section **« Historique de prospection »** : rattacher une ou plusieurs fiches prospect (un client peut en avoir plusieurs, ex. plusieurs sites signés), ou les détacher. Un clic ouvre la fiche prospect, en lecture, avec tout son historique.
+- Une fois rattachée, la fiche prospect est **archivée** : elle sort du pipeline actif, reste trouvable avec le filtre « Archivés ».
+
+**Modèle de données :**
+
+| Table | Contenu |
+|---|---|
+| `pipeline_etapes` | organisation, libellé, ordre, couleur, probabilité par défaut, type (`en_cours`, `gagne`, `perdu`), active |
+| `champs_perso` | organisation, objet (`prospect` aujourd'hui, `client` plus tard), clé stable, libellé, type, obligatoire, section, ordre, aide, correspondance Elise Pro / Axonaut, ajout de valeurs par les commerciaux autorisé, actif |
+| `champs_perso_options` | champ, identifiant stable, libellé, ordre, actif |
+| `prospects` | socle fixe ci-dessus + `valeurs_perso` (JSON : identifiant du champ → valeur ou identifiant(s) d'option) + `client_tiers_id`, statut du rattachement, archivé le |
+| `prospect_contacts`, `activites`, `rendez_vous` | contacts propres au prospect, journal, RDV |
+
+**Reprise de l'existant :** les ~10 champs du Google Sheet sont créés comme premiers champs personnalisés, avec leurs valeurs actuelles ; les 454 opportunités du Sheet peuvent être importées comme fiches prospect (les 167 signées archivées et rattachées à leur client par le code Elise Pro).
 
 ### 12.4 Ordre proposé
 

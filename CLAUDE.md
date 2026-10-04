@@ -33,6 +33,14 @@ API → la synchro Axonaut le fait apparaître dans Comptes clients → on **rat
 l'opportunité au client final** pour garder l'historique de prospection.
 Clé du rattachement automatique : le **code Elise Pro** (= « N° Client » Axonaut), saisi à la mise en place ; le SIRET sert de secours. Méthode actuelle analysée dans `docs/ANALYSE_SUIVI_COMMERCIAL.md`.
 
+**Fiche prospect ≠ fiche client** (décidé le 2026-10-04). La fiche prospect vit dans
+le pipeline ; à l'arrivée du client depuis Axonaut, on la rattache (ou non) à la fiche
+client, où elle est archivée et consultable (« Historique de prospection »). Ses champs
+de qualification sont des **champs personnalisés réglables dans les paramètres du
+pipeline, jamais codés en dur** (types : texte, nombre, montant, date, liste, choix
+multiple, case, téléphone, email), alignés sur les noms Elise Pro / Axonaut. Seul le
+socle (nom, SIRET, commercial, étape, montants, dates) est fixe. CDC 12.5.
+
 **Boucle client.** Sur un compte, on saisit des **mouvements de CA** (nouveau,
 augmentation, réduction, résiliation), en **mensuel**, avec une date d'effet. Le
 récurrent mensuel et son pont (début + nouveaux + hausses − baisses − résiliations

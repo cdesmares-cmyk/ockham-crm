@@ -169,7 +169,7 @@ Un mois par colonne :
 
 ## 5. Ce que ça donne dans Ockham CRM
 
-1. **Une seule fiche par entreprise, et des opportunités dessus.** Le nom, l'adresse et les contacts sont saisis une fois. Prospect et client partagent la même fiche.
+1. ~~Une seule fiche par entreprise~~ — **décidé le 04/10/2026 : fiche prospect distincte**, rattachée puis archivée dans la fiche client quand le client arrive d'Axonaut. Les champs de qualification sont des **champs personnalisés réglables** dans Ockham CRM (voir CDC 12.5).
 2. **Trois types d'opportunité sur le même pipeline :**
    - **nouveau client**, qui reprend « Suivi des opportunités » ;
    - **hausse** et **baisse**, qui reprennent « Variations contrats ».
