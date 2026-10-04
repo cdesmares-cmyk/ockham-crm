@@ -31,7 +31,7 @@ date de relance) ou **signé** → recréé **à la main** dans Elise Pro (ERP i
 d'Elise, non connecté) → commande → Elise Pro pousse le client dans **Axonaut** par
 API → la synchro Axonaut le fait apparaître dans Comptes clients → on **rattache
 l'opportunité au client final** pour garder l'historique de prospection.
-Clé du rattachement automatique : le **SIRET saisi à la création du prospect**.
+Clé du rattachement automatique : le **code Elise Pro** (= « N° Client » Axonaut), saisi à la mise en place ; le SIRET sert de secours. Méthode actuelle analysée dans `docs/ANALYSE_SUIVI_COMMERCIAL.md`.
 
 **Boucle client.** Sur un compte, on saisit des **mouvements de CA** (nouveau,
 augmentation, réduction, résiliation), en **mensuel**, avec une date d'effet. Le
@@ -39,7 +39,7 @@ récurrent mensuel et son pont (début + nouveaux + hausses − baisses − rés
 = fin) alimentent le tableau de bord. Ne pas confondre avec le CA **facturé**
 (Axonaut) : l'écart entre les deux est une alerte.
 
-Source existante à étudier : un Google Sheet du canal de prospection (lien à venir).
+Source actuelle : Google Sheet « SUIVI COMMERCIAL » (analysé, voir `docs/ANALYSE_SUIVI_COMMERCIAL.md`).
 
 ## Règles de collaboration (reprises de Lettrage)
 
