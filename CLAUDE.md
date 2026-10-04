@@ -23,6 +23,13 @@ copie** son code (charte, composants, Edge Functions) : jamais aucune écriture 
 son dossier, aucune commande git, `supabase link`, migration ou déploiement sur son
 dépôt ou sa base. Exigé par écrit le 2026-10-03.
 
+## Feuille de route : `PLAN_ACTION.md`
+
+Décidé le 2026-10-04 : **on temporise sur les vraies données**. Maquette fonctionnelle
+sur une **organisation Démo fictive (10 clients)**, module par module, validée à l'œil
+avant de rebrancher Elise Lyon. Priorité : **pipeline des leads** (sans le module de
+recherche de prospects). Pas de reprise de l'historique du Google Sheet pour l'instant.
+
 ## Les deux boucles métier (détail : `CDC.md` section 12)
 
 **Boucle prospect.** Prospect créé dans Ockham CRM → opportunité dans le pipeline

@@ -323,7 +323,7 @@ Le socle reste fixe parce que le tableau de bord en dépend (montants, étapes, 
 
 **Reprise de l'existant :** les ~10 champs du Google Sheet sont créés comme premiers champs personnalisés, avec leurs valeurs actuelles ; les 454 opportunités du Sheet peuvent être importées comme fiches prospect (les 167 signées archivées et rattachées à leur client par le code Elise Pro).
 
-### 12.4 Ordre proposé
+### 12.4 Ordre proposé (remplacé par `PLAN_ACTION.md` le 04/10/2026)
 
 1. Mise en ligne de Comptes clients (fait, en validation).
 2. Clé API Axonaut : synchro des factures mois par mois → base du CA récurrent.
