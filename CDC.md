@@ -206,5 +206,83 @@ Pilote avec 2 ou 3 commerciaux dès la V1.
 1. Signification des valeurs 1 à 4 des champs personnalisés « Zone » et « Catégorisation ».
 2. Fichier des codes postaux par commercial.
 3. ~~Visibilité~~ : 100 % du portefeuille pour tous, avec les filtres « Mon portefeuille » et « Mes leads ».
-4. Dépôt GitHub à créer (`ockham-crm`, privé).
+4. ~~Dépôt GitHub~~ : `cdesmares-cmyk/ockham-crm`.
 5. Nom de domaine de l'application (ex. `crm.ockham-finance.com`).
+6. Google Sheet actuel du canal de prospection : lien à transmettre, à étudier avant la V3.
+7. Les commerciaux créent-ils encore des prospects dans Axonaut ? (voir 12.1, risque de doublons)
+8. Le client créé par Elise Pro dans Axonaut est-il « client » dès sa création, ou seulement à la première facture ?
+
+## 12. Les deux boucles métier (exprimées le 04/10/2026)
+
+### 12.1 Boucle prospect : du premier contact au client facturé
+
+```
+ Ockham CRM                         Elise Pro (ERP)        Axonaut              Ockham CRM
+ ───────────────────────────────    ───────────────        ───────              ──────────
+ Nouveau prospect
+   → fiche prospect
+   → opportunité dans le pipeline
+     (RDV, commentaires, contacts,
+      montant, probabilité)
+   → Perdu : arrêt (+ motif, date
+     de relance éventuelle)
+   → Signé ────────────────────────▶ création à la main ─▶ commande ──API──▶ client ──synchro──▶ nouveau compte client
+                                                                                              │
+   opportunité signée ◀──────────── rattachement prospect → client final ◀────────────────────┘
+```
+
+**Ce qu'on garde tel quel :** Elise Pro n'est pas connecté, la fiche est recréée à la main ; Axonaut reste la source des clients et du CA.
+
+**Ce que je propose d'ajouter (challenge) :**
+
+1. **SIRET obligatoire à la création d'un prospect**, choisi dans la base publique des entreprises (on tape un nom, on choisit l'établissement). C'est ce qui permet ensuite de **retrouver tout seul** le client créé par Elise Pro dans Axonaut : même SIRET → l'outil propose « ce nouveau client correspond à l'opportunité X signée le … », le commercial valide. Sans SIRET, on retombe sur la ressemblance de noms, moins fiable.
+2. **Séparer le prospect et l'opportunité.** Le prospect, c'est l'entreprise ; l'opportunité, c'est une affaire. Une même entreprise peut avoir une affaire perdue en 2025 et une gagnée en 2026, et **un client existant peut avoir une opportunité** (nouveau site, nouveau flux). Le pipeline sert donc aussi au développement des clients.
+3. **Une étape « Signé, en attente de création »** entre la signature et l'apparition dans Axonaut. Elle se ferme d'elle-même quand le client est retrouvé. On mesure au passage le délai signature → première facture, et on repère les signatures oubliées dans Elise Pro.
+4. **Une fiche de passation** à la signature : tout ce qu'il faut saisir dans Elise Pro (SIRET, adresses, contacts, flux, montant), prêt à copier. Moins de ressaisie, moins d'erreurs.
+5. **« Perdu » ne veut pas dire « fini »** : motif de perte (prix, concurrent, pas de besoin, sans réponse) et date de relance proposée (6 ou 12 mois). Un prospect perdu est un prospect futur, et les motifs nourrissent les statistiques.
+6. **Probabilité par défaut selon l'étape**, modifiable : nouveau 10 %, qualifié 25 %, RDV 40 %, proposition 60 %, négociation 80 %. Le pipeline pondéré (montant × probabilité) alimente le tableau de bord.
+7. **Montant exprimé en mensuel** (récurrent), avec affichage annuel : c'est la même unité que les mouvements de CA (12.2), donc une affaire signée devient directement un mouvement « nouveau client ».
+
+**Modèle de données envisagé :**
+
+| Table | Contenu |
+|---|---|
+| `opportunites` | entreprise / fiche prospect, client existant éventuel, commercial, source, étape, probabilité, montant mensuel, date de signature prévue, statut (`en_cours`, `signe_attente`, `gagne`, `perdu`), motif de perte, date de relance, **client final rattaché** (+ statut suggéré / validé) |
+| `activites` | journal commun aux comptes et aux opportunités : RDV, appel, email, commentaire, changement d'étape |
+| `rendez_vous` | date, lieu, participants, compte rendu, lien Google Agenda |
+
+### 12.2 Boucle client : suivre l'évolution du CA
+
+Sur la fiche d'un compte, on saisit des **mouvements de CA** :
+
+| Type | Exemple |
+|---|---|
+| Nouveau client | +450 €/mois au 01/11/2026 (créé automatiquement à partir d'une opportunité gagnée) |
+| Augmentation | +120 €/mois au 01/01/2027 (nouveau flux, passage hebdo) |
+| Réduction | −80 €/mois au 01/03/2027 |
+| Résiliation | −(tout le récurrent) au 30/06/2027, avec motif |
+
+Chaque mois, l'outil calcule le **CA récurrent** et le pont d'un mois sur l'autre :
+`récurrent début + nouveaux + augmentations − réductions − résiliations = récurrent fin`, par commercial, secteur ou zone. C'est le tableau de bord dynamique demandé.
+
+**Ce que je propose d'ajouter (challenge) :**
+
+1. **Deux chiffres à ne pas confondre.** Le CA **facturé** vient d'Axonaut, c'est le réel. Le CA **récurrent** vient des mouvements, c'est le contractuel. L'écart entre les deux est une alerte utile : une baisse de facturation sans résiliation saisie, ou une augmentation saisie mais jamais facturée.
+2. **Un point de départ.** Les mouvements partent d'une base : on initialise le récurrent de chaque client à partir de la moyenne de ses factures des 3 ou 12 derniers mois (à choisir), puis on valide. Il faut pour ça les **factures mois par mois**, donc la clé API Axonaut. L'export CSV ne donne que des totaux.
+3. **Montants stockés en mensuel**, saisie possible en annuel (divisé par 12 à l'enregistrement) : un seul calcul, pas de mélange.
+4. **Date d'effet obligatoire**, distincte de la date de saisie : une résiliation annoncée en juin pour fin septembre compte en septembre.
+5. **Motif obligatoire sur les résiliations et réductions** : c'est la matière première de l'analyse du churn (taux de départ des clients).
+
+**Table envisagée :** `mouvements_ca` (compte, opportunité d'origine éventuelle, type, montant mensuel signé, date d'effet, motif, commentaire, auteur, date de saisie), et une vue mensuelle qui en déduit le récurrent et le pont.
+
+### 12.3 Carte
+
+Une carte unique avec des calques activables : **clients, points de collecte, prospects, opportunités en cours**. Couleur par commercial, type ou CA. Objectif : voir les zones peu couvertes et prospecter autour des tournées existantes. Préalable : géocodage des adresses (API Adresse).
+
+### 12.4 Ordre proposé
+
+1. Mise en ligne de Comptes clients (fait, en validation).
+2. Clé API Axonaut : synchro des factures mois par mois → base du CA récurrent.
+3. Carte (géocodage + calques).
+4. Pipeline prospect (12.1), après étude du Google Sheet actuel.
+5. Mouvements de CA et tableau de bord dynamique (12.2).

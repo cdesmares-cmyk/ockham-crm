@@ -23,6 +23,24 @@ copie** son code (charte, composants, Edge Functions) : jamais aucune écriture 
 son dossier, aucune commande git, `supabase link`, migration ou déploiement sur son
 dépôt ou sa base. Exigé par écrit le 2026-10-03.
 
+## Les deux boucles métier (détail : `CDC.md` section 12)
+
+**Boucle prospect.** Prospect créé dans Ockham CRM → opportunité dans le pipeline
+(RDV, commentaires, contacts, montant mensuel, probabilité) → **perdu** (motif,
+date de relance) ou **signé** → recréé **à la main** dans Elise Pro (ERP interne
+d'Elise, non connecté) → commande → Elise Pro pousse le client dans **Axonaut** par
+API → la synchro Axonaut le fait apparaître dans Comptes clients → on **rattache
+l'opportunité au client final** pour garder l'historique de prospection.
+Clé du rattachement automatique : le **SIRET saisi à la création du prospect**.
+
+**Boucle client.** Sur un compte, on saisit des **mouvements de CA** (nouveau,
+augmentation, réduction, résiliation), en **mensuel**, avec une date d'effet. Le
+récurrent mensuel et son pont (début + nouveaux + hausses − baisses − résiliations
+= fin) alimentent le tableau de bord. Ne pas confondre avec le CA **facturé**
+(Axonaut) : l'écart entre les deux est une alerte.
+
+Source existante à étudier : un Google Sheet du canal de prospection (lien à venir).
+
 ## Règles de collaboration (reprises de Lettrage)
 
 **Aucune modification sans validation écrite.** Lire, auditer, proposer : libre.
