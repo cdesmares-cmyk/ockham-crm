@@ -130,6 +130,14 @@ de connexion, visible seulement en local) pour voir les écrans sans base.
   jamais dans le front.
 - Exports de données (`data/`, `*.csv`) : jamais dans Git.
 
+## Démo
+
+Organisation **Démo Ockham** (`DEMO`), données 100 % fictives : 10 clients, 15 points de
+collecte, 5 prospects, 221 factures sur 24 mois. Remise à zéro avant une présentation :
+`node scripts/generer-demo.js` puis `npx supabase db query --linked -f supabase/seed/demo.sql`
+(un seul bloc DO, ne touche que DEMO). Le compte de Clément est sur DEMO depuis le
+2026-10-04 ; les données Elise Lyon sont intactes mais invisibles.
+
 ## État au 2026-10-03
 
 Fait :
